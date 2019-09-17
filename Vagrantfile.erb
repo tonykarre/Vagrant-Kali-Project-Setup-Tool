@@ -1,0 +1,98 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+
+#====================================================================
+# Tony Karre @tonykarre
+#
+#  Environment variables used:
+#    KALI_SETUP_TEMPLATE_PATH = full path to this file, e.g., c:\mypath\Vagrantfile.erb
+#    KALI_SETUP_HOST_SYNCED_FOLDER_PATH = host path to the shared folder. e.g., "G:/" for a mounted virtual drive
+#    KALI_SETUP_VM_SYNCED_FOLDER_PATH = kali path to the shared folder.  e.g., "/12345"
+#
+#
+#====================================================================
+
+# Generated from template <%= ENV["KALI_SETUP_TEMPLATE_PATH"] %>
+# Generated on <%= Time.now %>
+#
+# Make sure your KALI_SETUP_HOST_SYNCED_FOLDER_PATH is mounted and accessible before you "vagrant up" or "vagrant destroy".
+# Also make sure that if your HOST path is something like "G:/", then you
+# have actually mounted the desired virtual drive on G:.
+#
+#     KALI_SETUP_HOST_SYNCED_FOLDER_PATH: <%= ENV["KALI_SETUP_HOST_SYNCED_FOLDER_PATH"] %>
+#     KALI_SETUP_VM_SYNCED_FOLDER_PATH: <%= ENV["KALI_SETUP_VM_SYNCED_FOLDER_PATH"] %>
+
+# The presence of KALI_SETUP_HOST_SYNCED_FOLDER_PATH/.encryptionsemaphore means that we have encrypted the VM storage.
+
+ENCRYPTION_SEMAPHORE = "<%= ENV["KALI_SETUP_HOST_SYNCED_FOLDER_PATH"] %>.encryptionsemaphore"
+
+
+
+# provisioning script - install additional packages, etc.
+
+$script = <<-SCRIPT
+# Sleep until locks are available
+while fuser /var/{lib/{dpkg,apt/lists},cache/apt/archives}/lock >/dev/null 2>&1; do
+   sleep 1
+done
+apt-get update
+# Sleep again until locks are available
+while fuser /var/{lib/{dpkg,apt/lists},cache/apt/archives}/lock >/dev/null 2>&1; do
+   sleep 1
+done
+apt-get -y install exiftool rinetd jq awscli sharutils
+SCRIPT
+
+Vagrant.configure("2") do |config|
+
+  config.vm.box = "<%= box_name %>"
+
+  <% if box_version -%>
+    config.vm.box_version = "<%= box_version %>"
+  <% end -%>
+
+  <% if box_url -%>
+    # The url from where the 'config.vm.box' box will be fetched if it
+    # doesn't already exist on the user's system.
+    config.vm.box_url = "<%= box_url %>"
+  <% else -%>
+    # Disable automatic box update checking. If you disable this, then
+    # boxes will only be checked for updates when the user runs
+    # `vagrant box outdated`. This is not recommended.
+    # config.vm.box_check_update = false
+  <% end -%>
+
+
+  config.trigger.before :up do |trigger|
+
+    trigger.ruby do |env|
+
+      # if the ENCRYPTION_SEMAPHORE file exists, then we have encrypted the VM storage device.
+      # Print a message to warn the user that they will need to supply a password as the box comes up.
+
+      if File.exists?(ENCRYPTION_SEMAPHORE)
+
+        puts ""
+        puts "The VM is encrypted - watch the Virtualbox window as the box comes up. It will pause and ask for your password."
+        puts ""
+
+      end
+
+    end
+
+  end
+  
+  config.vm.synced_folder "<%= ENV["KALI_SETUP_HOST_SYNCED_FOLDER_PATH"] %>", "<%= ENV["KALI_SETUP_VM_SYNCED_FOLDER_PATH"] %>"
+  config.vm.synced_folder ".", "/vagrant", disabled: true
+  
+  config.vm.provider "virtualbox" do |vb|
+    vb.gui = true
+    vb.memory = "4096"
+    vb.cpus = 2
+
+  end
+
+  config.vm.provision "shell", inline: $script
+
+end
