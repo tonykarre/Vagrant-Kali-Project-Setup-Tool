@@ -18,7 +18,7 @@ Here's what this tool does:
 
 At this point you can use familiar commands like "vagrant halt" and "vagrant up" to manage your Kali VM.  When you are finished with the project, you can "vagrant destroy" the box, and you'll still have your project data stored separately on your bitlocker-protected virtual disk.
 
-Usage: copy down the Vagranfile.erb template file and vagrant-kali-project-setup-tool.ps1 file to your Windows machine, then:
+Usage: copy down the Vagrantfile.erb template file and vagrant-kali-project-setup-tool.ps1 file to your Windows machine, then:
 
 1. Open a cmd.exe console window as the administrator
 2. powershell -executionpolicy bypass -file vagrant-kali-project-setup-tool.ps1
