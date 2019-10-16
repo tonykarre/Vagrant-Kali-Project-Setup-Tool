@@ -41,7 +41,7 @@ apt-get update
 while fuser /var/{lib/{dpkg,apt/lists},cache/apt/archives}/lock >/dev/null 2>&1; do
    sleep 1
 done
-apt-get -y install exiftool rinetd jq awscli sharutils
+sudo DEBIAN_FRONTEND=noninteractive apt-get install -y exiftool rinetd jq awscli sharutils
 SCRIPT
 
 Vagrant.configure("2") do |config|
