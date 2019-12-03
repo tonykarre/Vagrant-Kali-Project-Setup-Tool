@@ -90,6 +90,12 @@ Vagrant.configure("2") do |config|
     vb.gui = true
     vb.memory = "4096"
     vb.cpus = 2
+     
+    # Kali 2019.4 does not seem to work well with VirtualBox 3D acceleration, which is the default.
+    # Customize the VM to select VMSVGA and disable 3D acceleration.
+     
+    vb.customize ["modifyvm", :id, "--graphicscontroller", "VMSVGA"]
+    vb.customize ["modifyvm", :id, "--accelerate3d", "off"]
 
   end
 
