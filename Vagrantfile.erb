@@ -42,6 +42,21 @@ while fuser /var/{lib/{dpkg,apt/lists},cache/apt/archives}/lock >/dev/null 2>&1;
    sleep 1
 done
 sudo DEBIAN_FRONTEND=noninteractive apt-get install -y exiftool rinetd jq awscli sharutils
+# Create the fixnetwork script.
+FIXNETWORK=/home/vagrant/fixnetwork.sh
+echo "Setting up $FIXNETWORK to run at each reboot"
+echo 'for intf in $(ip link show | grep eth.: | cut -d : -f 2) ; do' > $FIXNETWORK
+echo '  if [ $(ip addr show $intf | grep inet | wc -l) -eq 0 ]; then' >> $FIXNETWORK
+echo '    dhclient -1 $intf' >> $FIXNETWORK
+echo '  fi' >> $FIXNETWORK
+echo 'done' >> $FIXNETWORK
+if [ -f $FIXNETWORK ]; then
+  chmod +x $FIXNETWORK
+  echo "@reboot $FIXNETWORK" >> /etc/crontab
+else
+   echo "Failed to create $FIXNETWORK"
+fi
+echo "Provisioning script completed."
 SCRIPT
 
 Vagrant.configure("2") do |config|
@@ -62,6 +77,82 @@ Vagrant.configure("2") do |config|
     # `vagrant box outdated`. This is not recommended.
     # config.vm.box_check_update = false
   <% end -%>
+
+  # By default, the network interface is configured with NAT.  
+  # With Kali, your host's endpoint protection or antivirus could potentially block incoming packages when you try to update your VM, i.e., "apt-get dist-upgrade".
+  # You might need to be in bridged mode if that happens. Or maybe you just want bridged mode.
+  # If so, just uncomment the following line and use vagrant to restart the box (after you've done your first "vagrant up").
+
+  #config.vm.network "public_network", use_dhcp_assigned_default_route: true
+
+  # But before we continue, here's a quick word on the consequences of adding the public network.
+  # In my testing, if you simply choose the default NAT network, you get a single "eth0" adapter.
+  # When viewed from ifconfig, the network likely looks like this:
+  #
+  # root@kali:~# ifconfig
+  # eth0: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+  #         inet 10.0.2.15  netmask 255.255.255.0  broadcast 10.0.2.255
+  #         inet6 fe80::a00:27ff:fed1:a9ac  prefixlen 64  scopeid 0x20<link>
+  #         ether 08:00:27:d1:a9:ac  txqueuelen 1000  (Ethernet)
+  #         RX packets 349  bytes 42853 (41.8 KiB)
+  #         RX errors 0  dropped 0  overruns 0  frame 0
+  #         TX packets 273  bytes 48901 (47.7 KiB)
+  #         TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+  # 
+  # lo: flags=73<UP,LOOPBACK,RUNNING>  mtu 65536
+  #         inet 127.0.0.1  netmask 255.0.0.0
+  #         inet6 ::1  prefixlen 128  scopeid 0x10<host>
+  #         loop  txqueuelen 1000  (Local Loopback)
+  #         RX packets 6  bytes 318 (318.0 B)
+  #         RX errors 0  dropped 0  overruns 0  frame 0
+  #         TX packets 6  bytes 318 (318.0 B)
+  #         TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+  #
+  # But, if you add the public network by uncommenting the config.vm.network line above, 
+  # you end up with two network adapters.  You still get "eth0" for the NAT interface, but you
+  # then get a second "eth1" interface that is for your bridged network.
+  # Again, in my testing, sometimes the original NAT (eth0) interface fails to get an IP.
+  # When that happens, the "Vagrant Up" boot process appears to fail, because "Vagrant ssh" can't connect through
+  # your host loopback connector to the box.  The box boots OK, but Vagrant doesn't know it because
+  # "vagrant ssh" fails and it can't talk to the box.  If you do an ifconfig, it looks like this:
+  #
+  # root@kali:~# ifconfig
+  # eth0: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+  #         ether 08:00:27:d1:a9:ac  txqueuelen 1000  (Ethernet)
+  #         RX packets 567  bytes 67894 (66.3 KiB)
+  #         RX errors 0  dropped 0  overruns 0  frame 0
+  #         TX packets 429  bytes 76738 (74.9 KiB)
+  #         TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+  # 
+  # eth1: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+  #         inet 10.3.42.27  netmask 255.255.255.0  broadcast 10.3.42.255
+  #         inet6 fe80::a00:27ff:fefa:4d92  prefixlen 64  scopeid 0x20<link>
+  #         ether 08:00:27:fa:4d:92  txqueuelen 1000  (Ethernet)
+  #         RX packets 33  bytes 8887 (8.6 KiB)
+  #         RX errors 0  dropped 0  overruns 0  frame 0
+  #         TX packets 46  bytes 5323 (5.1 KiB)
+  #         TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+  # 
+  # lo: flags=73<UP,LOOPBACK,RUNNING>  mtu 65536
+  #         inet 127.0.0.1  netmask 255.0.0.0
+  #         inet6 ::1  prefixlen 128  scopeid 0x10<host>
+  #         loop  txqueuelen 1000  (Local Loopback)
+  #         RX packets 10  bytes 474 (474.0 B)
+  #         RX errors 0  dropped 0  overruns 0  frame 0
+  #         TX packets 10  bytes 474 (474.0 B)                                     
+  #         TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0                  
+  #
+  # You can still manually ssh into the box through
+  # the bridge interface, but "vagrant ssh" doesn't use that.
+  #
+  # A workaround is to run this:
+  #  dhclient -1 eth0
+  #
+  # That will get an IP for eth0 and all is fine.  To automatically implement that,
+  # the provisioning script seen up above adds a line to the /etc/crontab file to run at boot time.
+  # If any interface starting with "eth" is missing an IP address, we'll try to get one with the dhclient command.
+  # The script we create during provisioning is /home/vagrant/fixnetwork.sh
+  #
 
 
   config.trigger.before :up do |trigger|
