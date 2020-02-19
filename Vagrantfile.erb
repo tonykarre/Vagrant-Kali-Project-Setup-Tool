@@ -43,7 +43,7 @@ while fuser /var/{lib/{dpkg,apt/lists},cache/apt/archives}/lock >/dev/null 2>&1;
 done
 sudo DEBIAN_FRONTEND=noninteractive apt-get install -y exiftool rinetd jq awscli sharutils
 # Create the fixnetwork script.
-FIXNETWORK=/home/vagrant/fixnetwork.sh
+FIXNETWORK=/home/kali/fixnetwork.sh
 echo "Setting up $FIXNETWORK to run at each reboot"
 echo 'for intf in $(ip link show | grep eth.: | cut -d : -f 2) ; do' > $FIXNETWORK
 echo '  if [ $(ip addr show $intf | grep inet | wc -l) -eq 0 ]; then' >> $FIXNETWORK
@@ -151,7 +151,7 @@ Vagrant.configure("2") do |config|
   # That will get an IP for eth0 and all is fine.  To automatically implement that,
   # the provisioning script seen up above adds a line to the /etc/crontab file to run at boot time.
   # If any interface starting with "eth" is missing an IP address, we'll try to get one with the dhclient command.
-  # The script we create during provisioning is /home/vagrant/fixnetwork.sh
+  # The script we create during provisioning is /home/kali/fixnetwork.sh
   #
 
 
