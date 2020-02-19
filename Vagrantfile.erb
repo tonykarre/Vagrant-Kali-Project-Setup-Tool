@@ -188,7 +188,21 @@ Vagrant.configure("2") do |config|
     vb.customize ["modifyvm", :id, "--graphicscontroller", "VMSVGA"]
     vb.customize ["modifyvm", :id, "--accelerate3d", "off"]
 
-  end
+    # Add an empty optical drive so you can attach and run the VirtualBox Guest Additions.
+    # Even though Kali comes with virtualbox guest support installed, it doesn't always match
+    # the version of VirtualBox you are running, so it doesn't always work.
+    # You need working guest additions for copy/paste and drag/drop to work.
+    # If you want to re-install the VirtualBox Guest Additions, this seems to work:
+    #     1. uninstall the existing guest additions:  sudo apt-get remove virtualbox-guest-x11
+    #     2. in virtualbox, "insert guest additions CD Image..."
+    #     3. when the CD icon appears on the desktop, right-click and "mount volume" it.
+    #     4. cd /media/cdrom
+    #     5. sudo sh ./VBoxLinuxAdditions.run
+    #     5. restart
+
+    vb.customize ["storageattach", :id, "--storagectl", "IDE Controller", "--port", "0", "--device", "1", "--type", "dvddrive", "--medium", "emptydrive"] 
+
+end
 
   config.vm.provision "shell", inline: $script
 
