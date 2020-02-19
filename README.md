@@ -29,5 +29,5 @@ Notes:
 2. The script performs a few operations that require elevated privileges, namely creating/encrypting the virtual drive, and possibly patching vagrant.  That's why you need to run the powershell script in an elevated command window.
 3. Vagrant (at least as of 2.2.5) needs patching to support the survival of the "vagrant up" operation at the point the boot process pauses to allow you to type in the virtualbox encryption password.  The tool attempts to see if the patch needs to be applied, then patches it if needed. Read the powershell script for a deeper discussion.  If you don't patch, then "vagrant up" aborts during the boot process, and certain things like folder sharing will fail.  This is all handled by the script.
 4. In a multi-monitor configuration, certain pop-ups will appear on your "primary" monitor, which might not be the monitor you're looking at. When the tool asks you for a folder to create your project in, it will pop a Windows folder browser on the primary monitor.  You may have experienced this with other applications on Windows, where you sometimes have to look around to see where the popup is.
-5. Tested on Vagrant versions 2.2.5, 2.2.6
+5. Tested on Vagrant versions 2.2.5, 2.2.6, 2.2.7
 
